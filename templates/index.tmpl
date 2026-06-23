@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/uploads/favicon.ico" />
+    <title>{{.title}}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #666666;
+            margin: 0;
+            padding: 20px;
+        }
+
+        H3 {
+            margin-top: 5px;
+            margin-bottom: 10px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .tab {
+            padding: 5px 15px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            border-bottom-color: #3498db;
+        }
+
+        .upload-tab {
+            text-align: center;
+        }
+
+        .upload-content {
+            border-radius: 5px;
+            border: solid 1px #dee1e3;
+            margin-bottom: 1.5em;
+            padding: 20px;
+        }
+
+        .content {
+            display: none;
+        }
+
+        .content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        #document-file {
+            height: 58px;
+            box-sizing: border-box;
+            font-size: 20px;
+            color: #3498db;
+        }
+
+        #photo-file {
+            height: 58px;
+            box-sizing: border-box;
+            font-size: 20px;
+            color: #3498db;
+        }
+
+        button {
+            padding: 12px 18px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .items {
+            margin-top: 20px;
+        }
+
+        .item {
+            border-radius: 5px;
+            border: solid 1px #dee1e3;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .item .title {
+            font-weight: bold;
+        }
+
+        .item .actions {
+            margin-top: 10px;
+        }
+
+        .item .actions a {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <img src="uploads/title1.jpg" alt="title">
+        <h3> &nbsp;<img src="uploads/top_title.png" alt="title">{{.title}} </h3>
+        <div class="tabs">
+            <div class="tab " data-tab="upload">上传</div>
+            <div class="tab active" data-tab="articles">文章</div>
+            <div class="tab" data-tab="photos">照片</div>
+            <div class="tab" data-tab="documents">文档</div>
+        </div>
+
+        <!-- 上传内容 -->
+        <div class="content" id="upload">
+
+            <div class="upload-tab active" data-type="article"><img src="uploads/title-article.png" alt="title"></div>
+
+            <div class="upload-content active" id="upload-article">
+                <form id="article-form">
+                    <div class="form-group">
+                        <label for="article-title">标题</label>
+                        <input type="text" id="article-title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="article-content">内容</label>
+                        <textarea id="article-content" rows="5" required></textarea>
+                    </div>
+                    <button type="submit">发布文章</button>
+                </form>
+            </div>
+
+            <div class="upload-tab" data-type="photo"><img src="uploads/title-picture.png" alt="title"></div>
+            <div class="upload-content" id="upload-photo">
+                <form id="photo-form" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="photo-file">选择照片——jpg,png,gif图片</label>
+                        <input type="file" id="photo-file" accept="image/*" required>
+                    </div>
+                    <button type="submit">上传照片</button>
+                </form>
+            </div>
+
+            <div class="upload-tab" data-type="document"><img src="uploads/title-doc.png" alt="title"></div>
+            <div class="upload-content" id="upload-document">
+                <form id="document-form" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="document-file">选择文档——Doc,ppt,txt等Office文件 </label>
+                        <input type="file" id="document-file" required>
+                    </div>
+                    <button type="submit"> 上传文档 </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 文章列表 -->
+        <div class="content active" id="articles">
+            <h3>文章列表</h3>
+            <div id="article-read"></div>
+            <div id="articles-list" class="items"></div>
+        </div>
+
+        <!-- 照片列表 -->
+        <div class="content" id="photos">
+            <h3>照片列表</h3>
+            <div id="photos-list" class="items"></div>
+        </div>
+
+        <!-- 文档列表 -->
+        <div class="content" id="documents">
+            <h3>文档列表</h3>
+            <div id="documents-list" class="items"></div>
+        </div>
+    </div>
+
+    <script>
+        // 定义 API 常量
+        const API_ITEMS = '/api/items';
+        const API_ARTICLES = '/api/articles';
+        const API_FILES = '/api/files';
+
+        // 定义展开文章函数
+        function toggleArticle(button) {
+            // 获取按钮后面的文章全文元素
+            // const fullContent = button.nextElementSibling;
+            // if (!fullContent) return;
+            const fullContent = button.previousElementSibling;
+            const isExpanded = fullContent.style.display === 'block';
+            fullContent.style.display = isExpanded ? 'none' : 'block';
+            button.textContent = isExpanded ? '展开全文' : '收起';
+        }
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function () {
+            // 显示加载状态
+            function showLoading() {
+                // 可添加显示加载动画的逻辑
+            }
+
+            // 隐藏加载状态
+            function hideLoading() {
+                // 可添加隐藏加载动画的逻辑
+            }
+
+            // 显示错误消息
+            function showError(message) {
+                console.error('Error:', message);
+                // 可在页面上显示错误消息
+                alert(message);
+            }
+
+            // 通用的文件上传函数
+            function uploadFile(formData, successCallback) {
+                showLoading();
+                fetch(API_FILES, {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        hideLoading();
+                        successCallback(data);
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        showError('上传失败');
+                    });
+            }
+
+            // 标签页切换
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // 移除所有活动状态
+                    tabs.forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+
+                    // 添加当前活动状态
+                    tab.classList.add('active');
+                    document.getElementById(tab.dataset.tab).classList.add('active');
+
+                    // 如果是内容标签页，加载相应内容
+                    if (tab.dataset.tab !== 'upload') {
+                        loadItems(tab.dataset.tab);
+                    }
+                });
+            });
+
+            // 上传标签页切换
+            const uploadTabs = document.querySelectorAll('.upload-tab');
+            uploadTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // 移除所有活动状态
+                    uploadTabs.forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.upload-content').forEach(c => c.classList.remove('active'));
+
+                    // 添加当前活动状态
+                    tab.classList.add('active');
+                    document.getElementById(`upload-${tab.dataset.type}`).classList.add('active');
+                });
+            });
+
+            // 文章表单提交
+            document.getElementById('article-form').addEventListener('submit', function (e) {
+                e.preventDefault();
+                showLoading();
+                const title = document.getElementById('article-title').value;
+                const content = document.getElementById('article-content').value;
+
+                fetch(API_ARTICLES, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `title=${encodeURIComponent(title)}&content=${encodeURIComponent(content)}`
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        hideLoading();
+                        alert('文章发布成功');
+                        document.getElementById('article-title').value = '';
+                        document.getElementById('article-content').value = '';
+                        loadItems('articles');
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        showError('发布失败');
+                    });
+            });
+
+            // 照片表单提交
+            document.getElementById('photo-form').addEventListener('submit', function (e) {
+                e.preventDefault();
+                const fileInput = document.getElementById('photo-file');
+                const file = fileInput.files[0];
+
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append('type', 'photo');
+                formData.append('file', file);
+
+                uploadFile(formData, (data) => {
+                    alert('照片上传成功');
+                    fileInput.value = '';
+                    loadItems('photos');
+                });
+            });
+
+            // 文档表单提交
+            document.getElementById('document-form').addEventListener('submit', function (e) {
+                e.preventDefault();
+                const fileInput = document.getElementById('document-file');
+                const file = fileInput.files[0];
+
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append('type', 'document');
+                formData.append('file', file);
+
+                uploadFile(formData, (data) => {
+                    alert('文档上传成功');
+                    fileInput.value = '';
+                    loadItems('documents');
+                });
+            });
+
+
+
+            // 加载媒体项
+            function loadItems(type) {
+                showLoading();
+                fetch(API_ITEMS)
+                    .then(response => response.json())
+                    .then(items => {
+                        // 过滤特定类型的项目
+                        const filteredItems = items.filter(item => {
+                            if (type === 'articles') return item.type === 'article';
+                            if (type === 'photos') return item.type === 'photo';
+                            if (type === 'documents') return item.type === 'document';
+                            return false;
+                        });
+
+                        // 清空列表
+                        const listElement = document.getElementById(`${type}-list`);
+                        listElement.innerHTML = '';
+
+                        // 添加项目到列表
+                        if (filteredItems.length === 0) {
+                            listElement.innerHTML = '<div class="item">暂无内容</div>';
+                            hideLoading();
+                            return;
+                        }
+
+                        filteredItems.forEach(item => {
+                            const itemElement = document.createElement('div');
+                            itemElement.className = 'item';
+
+                            let contentHtml = '';
+                            if (item.type === 'article') {
+                                const escapedTitle = escapeHtml(item.title);
+                                const escapedContent = escapeHtml(item.content);
+                                contentHtml = `
+                                <div class="article-item">
+                                    
+                                    <div class="article-preview">${escapedContent.substring(0, 100)}${escapedContent.length > 100 ? ' ...' : ''}</div>
+                                    <div class="article-full" style="display:none;"><b>全文信息：</b>${escapedContent}</div>
+                                    ${escapedContent.length > 100 ? `<button class="toggle-full-text" onclick="toggleArticle(this)">展开全文</button>` : ''}
+                                    
+                                </div>
+                            `;
+                            } else if (item.type === 'photo') {
+                                contentHtml = `<img src="${API_FILES}/${item.id}" style="max-width: 200px;">`;
+                            } else if (item.type === 'document') {
+                                const escapedTitle = escapeHtml(item.title);
+                                contentHtml = `<div class="content">文件: ${escapedTitle}</div>`;
+                            }
+
+                            itemElement.innerHTML = `
+                            <div class="title">${escapeHtml(item.title)}</div>
+                            <div class="date">${new Date(item.created_at).toLocaleString()}</div>
+                            ${contentHtml}
+                            <div class="actions">
+                                ${item.type !== 'article' ?
+                                    `<a href="${API_FILES}/${item.id}">下载</a>` : ''
+                                }
+                            </div>
+                        `;
+
+                            listElement.appendChild(itemElement);
+                        });
+                        hideLoading();
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        showError('加载内容失败');
+                    });
+            }
+
+            // HTML转义/反转义函数
+            function escapeHtml(text) {
+                return text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function unescapeHtml(escapedText) {
+                return escapedText
+                    .replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#039;/g, "'");
+            }
+
+            // 初始加载文章
+            loadItems('articles');
+        });
+    </script>
+</body>
+
+</html>
